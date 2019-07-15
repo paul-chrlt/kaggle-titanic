@@ -1,3 +1,7 @@
+## libraries
+
+library(caret)
+
 ## data import
 
 trainSource <-read.csv("./datasource/train.csv",stringsAsFactors = FALSE) 
@@ -9,7 +13,7 @@ trainindex <- createDataPartition(trainSource$Survived,p=0.8,list = FALSE)
 trainset <- trainSource[trainindex,]
 testset <- trainSource[-trainindex,]
 
-## date cleaning
+## data cleaning
 
 meanage <- mean(trainSource$Age,na.rm = TRUE)
 
@@ -25,27 +29,38 @@ formatter <- function(dataset){
 trainset <- formatter(trainset)
 testset <- formatter(testset)
 
-## training
+## feature engineering
 
-model <- glm(Survived~Pclass+Sex+Age+SibSp+Parch+Fare+Embarked,data = trainset)
 
-prediction <- predict(model,testset)
-prediction <- round(prediction)
 
-confusionMatrix(as.factor(prediction),as.factor(testset$Survived))
-## 81%
-library(caret)
+### dataset preparation
+
 outcome <- trainset$Survived
 modeltrainset <- trainset[,c(3,5,6,7,8,10,12)]
+
 traincontrol <- trainControl()
+
+## training
+
+### GLM, 81% accuracy
+
+glmmodel <- glm(Survived~Pclass+Sex+Age+SibSp+Parch+Fare+Embarked,data = trainset,family = "binomial")
+glmprediction <- predict(glmmodel,testset)
+glmprediction[glmprediction>.5] <- 1
+glmprediction[glmprediction<.5] <- 0
+confusionMatrix(as.factor(glmprediction),as.factor(testset$Survived))
+
+### adaBoost, 82% accuracy
 adaboostModel <- train(modeltrainset,
                     outcome,
                     method = "adaboost")
 adaboostprediction <- predict(adaboostModel,testset)
 confusionMatrix(adaboostprediction,testset$Survived)
-## 79%
+
+### Random Forest, 85% accuracy
+
 rfModel <- train(modeltrainset,
                  outcome,
                  method = "rf")
 rfPrediction <- predict(rfModel,testset)
-## 82%
+confusionMatrix(rfPrediction,testset$Survived)
