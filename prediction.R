@@ -60,12 +60,11 @@ trainset <- featurecrator(trainset)
 testset <- featurecrator(testset)
 kaggletest <- featurecrator(kaggletest)
 
-### dataset preparation
-
-modeltrainset <- trainset[,c(2,3,5,6,7,8,10,12,13,14,15,16)]
-
-traincontrol <- trainControl()
 ## training
+
+### control
+
+control <- trainControl(method="cv", number = 20)
 
 ### GLM, 82% accuracy
 
@@ -75,10 +74,20 @@ glmprediction[glmprediction>.5] <- 1
 glmprediction[glmprediction<.5] <- 0
 confusionMatrix(as.factor(glmprediction),as.factor(testset$Survived))
 
+### logiboost
+
+glmModel <- train(Survived~Pclass+Sex+Age+SibSp+Parch+Fare+Embarked+isChild+hasFamily+hasPartner+nameLength+hasCabin,
+                       method = "glm",
+                       data=trainset,
+                       trControl=control)
+glmprediction <- predict(glmModel,testset)
+confusionMatrix(glmprediction,testset$Survived)
+
 ### adaBoost, 82% accuracy
 adaboostModel <- train(Survived~Pclass+Sex+Age+SibSp+Parch+Fare+Embarked+isChild+hasFamily+hasPartner+nameLength+hasCabin,
                     method = "adaboost",
-                    data=trainset)
+                    data=trainset,
+                    trControl=control)
 adaboostprediction <- predict(adaboostModel,testset)
 confusionMatrix(adaboostprediction,testset$Survived)
 
@@ -86,7 +95,8 @@ confusionMatrix(adaboostprediction,testset$Survived)
 
 rfModel <- train(Survived~Pclass+Sex+Age+SibSp+Parch+Fare+Embarked+isChild+hasFamily+hasPartner+nameLength+hasCabin,
                  method="rf",
-                 data = trainset)
+                 data = trainset,
+                 trControl=control)
 
 rfPrediction <- predict(rfModel,testset)
 confusionMatrix(rfPrediction,testset$Survived)
