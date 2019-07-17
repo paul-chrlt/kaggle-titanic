@@ -19,9 +19,15 @@ meanage <- mean(trainSource$Age,na.rm = TRUE)
 meanfare <- mean(trainSource$Fare,na.rm=TRUE)
 
 formatter <- function(dataset){
-    dataset$Survived <- as.factor(dataset$Survived)
-    dataset[is.na(dataset$Age),]$Age <- meanage
-    dataset[is.na(dataset$Fare),]$Fare <- meanfare
+    if(!is.null(dataset$Survived)){
+        dataset$Survived <- as.factor(dataset$Survived)
+    }
+    if(length(dataset[is.na(dataset$Age),]$Age)>0){
+        dataset[is.na(dataset$Age),]$Age <- meanage
+    }
+    if(length(dataset[is.na(dataset$Fare),]$Fare)>0){
+        dataset[is.na(dataset$Fare),]$Fare <- meanfare
+    }
     dataset$Pclass <- as.factor(dataset$Pclass)
     dataset$Sex <- as.factor(dataset$Sex)
     dataset$Embarked <- as.factor(dataset$Embarked)
