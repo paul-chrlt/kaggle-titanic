@@ -37,3 +37,6 @@ rsconnect/
 
 # data folder
 /datasource/
+
+# prediction
+submission.csv

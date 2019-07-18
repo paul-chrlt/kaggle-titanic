@@ -64,22 +64,19 @@ kaggletest <- featurecrator(kaggletest)
 
 ### control
 
-control <- trainControl(method="cv", number = 20)
+control <- trainControl(method="repeatedcv", number = 30, repeats = 5,search = "grid")
 
 ### GLM, 82% accuracy
 
-glmmodel <- glm(Survived~Pclass+Sex+Age+SibSp+Parch+Fare+Embarked+isChild+hasFamily+hasPartner+nameLength+hasCabin,data = trainset,family = "binomial")
-glmprediction <- predict(glmmodel,testset)
-glmprediction[glmprediction>.5] <- 1
-glmprediction[glmprediction<.5] <- 0
-confusionMatrix(as.factor(glmprediction),as.factor(testset$Survived))
-
-### logiboost
-
-glmModel <- train(Survived~Pclass+Sex+Age+SibSp+Parch+Fare+Embarked+isChild+hasFamily+hasPartner+nameLength+hasCabin,
-                       method = "glm",
-                       data=trainset,
-                       trControl=control)
+glmModel <-
+    train(
+        Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + isChild +
+            hasFamily + hasPartner + nameLength + hasCabin,
+        method = "glm",
+        family = "binomial",
+        data = trainset,
+        trControl = control
+    )
 glmprediction <- predict(glmModel,testset)
 confusionMatrix(glmprediction,testset$Survived)
 
@@ -104,6 +101,7 @@ confusionMatrix(rfPrediction,testset$Survived)
 ## Vote, 84% accuracy
 
 predictionsVote <- data.frame(glmprediction,adaboostprediction,rfPrediction)
+predictionsVote$glmprediction <- as.integer(as.character(predictionsVote$glmprediction))
 predictionsVote$adaboostprediction <- as.integer(as.character(predictionsVote$adaboostprediction))
 predictionsVote$rfPrediction <- as.integer(as.character(predictionsVote$rfPrediction))
 predictionsVote$vote <- as.integer((predictionsVote$glmprediction+predictionsVote$adaboostprediction+predictionsVote$rfPrediction)>1)
@@ -111,18 +109,19 @@ predictionsVote$vote <- as.integer((predictionsVote$glmprediction+predictionsVot
 confusionMatrix(as.factor(predictionsVote$vote),testset$Survived)
 
 ## Predict Kaggle data
-kglmprediction <- predict(glmmodel,kaggletest)
-kglmprediction[kglmprediction>.5] <- 1
-kglmprediction[kglmprediction<.5] <- 0
+
+kglmprediction <- predict(glmModel,kaggletest)
 
 kadaboostprediction <- predict(adaboostModel,kaggletest)
 
 krfPrediction <- predict(rfModel,kaggletest)
 
 kpredictionsVote <- data.frame(kglmprediction,kadaboostprediction,krfPrediction)
+kpredictionsVote$kglmprediction <- as.integer(as.character(kpredictionsVote$kglmprediction))
 kpredictionsVote$kadaboostprediction <- as.integer(as.character(kpredictionsVote$kadaboostprediction))
 kpredictionsVote$krfPrediction <- as.integer(as.character(kpredictionsVote$krfPrediction))
 kpredictionsVote$vote <- as.integer((kpredictionsVote$kglmprediction+kpredictionsVote$kadaboostprediction+kpredictionsVote$krfPrediction)>1)
 
-ksubmission <- cbind(kaggletest$PassengerId,kpredictionsVote$vote)
+ksubmission <- data.frame(kaggletest$PassengerId,kpredictionsVote$vote)
+names(ksubmission) <- c("PassengerId","Survived")
 write.csv(ksubmission,file="submission.csv",row.names = FALSE)
