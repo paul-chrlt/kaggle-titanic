@@ -41,6 +41,7 @@ kaggletest <- formatter(kaggletestSource)
 ## feature engineering
 
 library(stringr)
+library(forcats)
 
 featurecrator <- function(dataset){
     ### child under 20
@@ -51,8 +52,16 @@ featurecrator <- function(dataset){
     dataset$hasPartner <- dataset$SibSp > 0
     ### name length
     dataset$nameLength <- str_length(dataset$Name)
-    ### has a cabin
-    dataset$hasCabin <- dataset$Cabin != ""
+    ### title - reste à filtrer pour exclure les facteurs rarement apparents
+    dataset$title <- as.factor(str_extract_all(dataset$Name,pattern="[A-Za-z]+\\.",simplify = TRUE)[,1])
+    minortitles <- summary(dataset$title)<5
+    minortitles <- names(minortitles)[minortitles]
+    dataset$title <- fct_collapse(dataset$title,minor=minortitles)
+    ### cabinFamily - reste à filtrer pour exclure les facteurs rarement apparents
+    dataset$cabinfamily <- as.factor(str_extract_all(dataset$Cabin,pattern="^[A-Z]{1}",simplify = TRUE))
+    minorcabins <- summary(dataset$cabinfamily)<10
+    minorcabins <- names(minorcabins)[minorcabins]
+    dataset$cabinfamily <- fct_collapse(dataset$cabinfamily,minor=minorcabins)
     dataset
 }
 
@@ -64,24 +73,25 @@ kaggletest <- featurecrator(kaggletest)
 
 ### control
 
-control <- trainControl(method="repeatedcv", number = 30, repeats = 5,search = "grid")
+control <- trainControl(method="repeatedcv", number = 10, repeats = 3,search = "grid")
 
 ### GLM, 82% accuracy
 
 glmModel <-
     train(
         Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + isChild +
-            hasFamily + hasPartner + nameLength + hasCabin,
+            hasFamily + hasPartner + nameLength + cabinfamily + title,
         method = "glm",
-        family = "binomial",
+        family = binomial(),
         data = trainset,
         trControl = control
     )
+
 glmprediction <- predict(glmModel,testset)
 confusionMatrix(glmprediction,testset$Survived)
 
 ### adaBoost, 82% accuracy
-adaboostModel <- train(Survived~Pclass+Sex+Age+SibSp+Parch+Fare+Embarked+isChild+hasFamily+hasPartner+nameLength+hasCabin,
+adaboostModel <- train(Survived~Pclass+Sex+Age+SibSp+Parch+Fare+Embarked+isChild+hasFamily+hasPartner+nameLength+cabinfamily+ title,
                     method = "adaboost",
                     data=trainset,
                     trControl=control)
@@ -90,11 +100,10 @@ confusionMatrix(adaboostprediction,testset$Survived)
 
 ### Random Forest, 85% accuracy
 
-rfModel <- train(Survived~Pclass+Sex+Age+SibSp+Parch+Fare+Embarked+isChild+hasFamily+hasPartner+nameLength+hasCabin,
+rfModel <- train(Survived~Pclass+Sex+Age+SibSp+Parch+Fare+Embarked+isChild+hasFamily+hasPartner+nameLength+cabinfamily+ title,
                  method="rf",
                  data = trainset,
                  trControl=control)
-
 rfPrediction <- predict(rfModel,testset)
 confusionMatrix(rfPrediction,testset$Survived)
 
